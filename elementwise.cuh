@@ -20,15 +20,15 @@
 // ---- 三个算子：模板仿函数，float / half 各自用原生 + - * -------------------
 template <typename T>
 struct AddOp {
-    __device__ __forceinline__ T operator()(T a, T b) const { return a + b; }
+    __host__ __device__ __forceinline__ T operator()(T a, T b) const { return a + b; }
 };
 template <typename T>
 struct SubOp {
-    __device__ __forceinline__ T operator()(T a, T b) const { return a - b; }
+    __host__ __device__ __forceinline__ T operator()(T a, T b) const { return a - b; }
 };
 template <typename T>
 struct MulOp {
-    __device__ __forceinline__ T operator()(T a, T b) const { return a * b; }
+    __host__ __device__ __forceinline__ T operator()(T a, T b) const { return a * b; }
 };
 
 // ---- 版本一：忠实移植昇腾模板的核间切分 --------------------------------------
