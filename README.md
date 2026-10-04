@@ -51,3 +51,15 @@ nvcc -std=c++17 -arch=all-major -o elementwise main.cu
 ```
 
 期望输出：三个版本 × 五个 shape × 三个算子全部通过，末尾 `failed=0`。
+
+## 一个真实的调试案例：`__device__` 仿函数被主机调用
+
+首版 `./elementwise` 只打印第一行 `== block-partition ==` 就退出（`exit=1`），且**没有任何 CUDA error**——`CUDA_CHECK` 没触发、`[Failed]` 也没打印。定位过程：
+
+1. **最小二分排除环境**：先写一个单 block/单线程的 `add1` 内核跑通，确认 nvcc + 驱动 + 显卡本身没问题。
+2. **逐 case 插桩**：在 `main.cu` 循环里给每个 (version, op, shape) 打 `[vN op n] begin / ok=` 标记，`setvbuf(stdout, _IONBF)` 强制刷新，发现崩在第一个 case 的 `golden()`。
+3. **定位根因**：`golden()` 是主机函数，却调用 `AddOp/SubOp/MulOp::operator()`；后者被标成 `__device__`（只能跑在 GPU 上），主机调用是执行空间错误 → 运行时静默崩溃、不产生 CUDA error。
+
+修法：三个仿函数的 `operator()` 从 `__device__ __forceinline__` 改成 `__host__ __device__ __forceinline__`，主机/设备两侧都可内联调用。
+
+修复后在 RTX 3080 Ti（sm_86）上 46 例全过（`passed=46 failed=0`）。
